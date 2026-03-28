@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cifra_game/theme/app_theme.dart';
 import 'package:cifra_game/providers/game_provider.dart';
+import 'package:cifra_game/models/game_state.dart';
 import 'package:cifra_game/widgets/glass_card.dart';
 
 class AddExpenseSheet extends StatefulWidget {

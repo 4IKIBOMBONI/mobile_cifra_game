@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import 'package:cifra_game/theme/app_theme.dart';
 import 'package:cifra_game/providers/game_provider.dart';
+import 'package:cifra_game/models/game_state.dart';
 import 'package:cifra_game/widgets/glass_card.dart';
 import 'package:cifra_game/widgets/donut_chart.dart';
 import 'package:cifra_game/screens/home/add_expense_sheet.dart';
