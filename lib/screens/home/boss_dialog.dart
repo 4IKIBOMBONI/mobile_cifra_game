@@ -161,15 +161,11 @@ class _BossDialogState extends State<BossDialog> {
               ] else ...[
                 // Choices
                 ...widget.boss.choices.asMap().entries.map((entry) {
-                  final index = entry.key;
                   final choice = entry.value;
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 10),
                     child: _buildChoiceCard(context, choice, formatter),
-                  ).animate().fadeIn(
-                    delay: Duration(milliseconds: 400 + index * 150),
-                    duration: 300.ms,
-                  ).slideX(begin: 0.1, end: 0);
+                  );
                 }),
               ],
             ],
@@ -181,6 +177,7 @@ class _BossDialogState extends State<BossDialog> {
 
   Widget _buildChoiceCard(BuildContext context, BossChoice choice, NumberFormat formatter) {
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: () {
         context.read<GameProvider>().applyBossChoice(choice);
         setState(() {

@@ -9,6 +9,7 @@ import 'package:cifra_game/screens/investments/investments_screen.dart';
 import 'package:cifra_game/screens/shop/shop_screen.dart';
 import 'package:cifra_game/screens/progress_map/progress_map_screen.dart';
 import 'package:cifra_game/screens/profile/profile_screen.dart';
+import 'package:cifra_game/screens/home/game_over_screen.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -40,6 +41,12 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
+    final isGameOver = context.watch<GameProvider>().isGameOver;
+
+    if (isGameOver) {
+      return const GameOverScreen();
+    }
+
     return Scaffold(
       body: IndexedStack(
         index: _currentIndex,

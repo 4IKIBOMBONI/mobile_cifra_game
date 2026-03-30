@@ -177,6 +177,10 @@ class GameProvider extends ChangeNotifier {
     return null;
   }
 
+  // Game over
+  bool _isGameOver = false;
+  bool get isGameOver => _isGameOver;
+
   // Pending reward for UI to show
   String? _pendingReward;
   String? get pendingReward => _pendingReward;
@@ -505,7 +509,43 @@ class GameProvider extends ChangeNotifier {
     // Regenerate quests
     _dailyQuests = GameDataExtended.generateDailyQuests(_currentDay + _currentMonth * 30);
 
+    // Game over after 12 months
+    if (_totalMonthsPlayed >= 12) {
+      _isGameOver = true;
+    }
+
     notifyListeners();
+  }
+
+  void resetGame() {
+    _user = const UserProfile(name: 'Алексей');
+    _currentDay = 1;
+    _currentMonth = 1;
+    _totalDaysInMonth = 30;
+    _salary = GameData.defaultSalary;
+    _balance = 60000;
+    _points = 500;
+    _streak = 0;
+    _financialScore = 72;
+    _totalMonthsPlayed = 0;
+    _todayExpenseCount = 0;
+    _todaySpent = 0;
+    _creditScore = 650;
+    _isGameOver = false;
+    _pendingReward = null;
+    _categories = GameData.defaultCategories();
+    _goals = GameData.defaultGoals();
+    _achievements = GameData.allAchievements();
+    _merchItems = GameData.allMerchItems();
+    _lessons = GameData.allLessons();
+    _transactions.clear();
+    _availableEvents = GameData.randomEvents();
+    _stocks = InvestmentSimulator.generateStocks();
+    _portfolio.clear();
+    _lifeStages = GameDataExtended.lifeStages();
+    _bossChallenges = GameDataExtended.bossChallenges();
+    _dailyQuests = GameDataExtended.generateDailyQuests(1);
+    initializeGame();
   }
 
   // ===== Quest System =====

@@ -458,7 +458,7 @@ class _LessonScreenState extends State<LessonScreen> {
               text: 'Вернуться к урокам',
               onPressed: () => Navigator.pop(context),
             ),
-          ).animate().fadeIn(delay: 500.ms),
+          ),
         ],
       ),
     );
