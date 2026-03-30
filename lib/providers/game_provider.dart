@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:cifra_game/models/game_state.dart';
+import 'package:cifra_game/models/game_models.dart';
 import 'package:cifra_game/services/game_data.dart';
 
 class GameProvider extends ChangeNotifier {
@@ -9,14 +10,17 @@ class GameProvider extends ChangeNotifier {
   UserProfile get user => _user;
 
   // Game state
-  int _currentDay = 15;
-  int _currentMonth = 2; // February
+  int _currentDay = 1;
+  int _currentMonth = 1;
   int _totalDaysInMonth = 30;
   double _salary = GameData.defaultSalary;
-  double _balance = 45230;
-  int _points = 2450;
-  int _streak = 3;
+  double _balance = 60000;
+  int _points = 500;
+  int _streak = 0;
   int _financialScore = 72;
+  int _totalMonthsPlayed = 0;
+  int _todayExpenseCount = 0;
+  double _todaySpent = 0;
 
   int get currentDay => _currentDay;
   int get currentMonth => _currentMonth;
@@ -28,6 +32,7 @@ class GameProvider extends ChangeNotifier {
   int get points => _points;
   int get streak => _streak;
   int get financialScore => _financialScore;
+  int get totalMonthsPlayed => _totalMonthsPlayed;
 
   String get monthName {
     const months = [
@@ -93,9 +98,96 @@ class GameProvider extends ChangeNotifier {
   // Life events
   List<LifeEvent> _availableEvents = GameData.randomEvents();
 
+  // ===== NEW GAME SYSTEMS =====
+
+  // Stocks / Investments
+  List<Stock> _stocks = InvestmentSimulator.generateStocks();
+  List<Stock> get stocks => _stocks;
+  final List<StockPortfolio> _portfolio = [];
+  List<StockPortfolio> get portfolio => _portfolio;
+
+  double get portfolioValue {
+    double total = 0;
+    for (var p in _portfolio) {
+      final stock = _stocks.firstWhere((s) => s.id == p.stockId, orElse: () => _stocks.first);
+      total += stock.currentPrice * p.shares;
+    }
+    return total;
+  }
+
+  double get portfolioProfit {
+    double total = 0;
+    for (var p in _portfolio) {
+      final stock = _stocks.firstWhere((s) => s.id == p.stockId, orElse: () => _stocks.first);
+      total += (stock.currentPrice - p.avgBuyPrice) * p.shares;
+    }
+    return total;
+  }
+
+  // Credit Score
+  int _creditScore = 650;
+  int get creditScore => _creditScore;
+
+  CreditScore get creditScoreData {
+    List<CreditFactor> factors = [];
+    if (_streak >= 7) {
+      factors.add(const CreditFactor(name: 'Стабильность', description: 'Регулярная активность', impact: CreditImpact.positive));
+    }
+    if (totalSpent <= totalAllocated) {
+      factors.add(const CreditFactor(name: 'Бюджет', description: 'Расходы в пределах бюджета', impact: CreditImpact.positive));
+    } else {
+      factors.add(const CreditFactor(name: 'Перерасход', description: 'Расходы выше бюджета', impact: CreditImpact.negative));
+    }
+    if (savingsTotal > 0) {
+      factors.add(const CreditFactor(name: 'Накопления', description: 'Есть сбережения', impact: CreditImpact.positive));
+    }
+    if (_portfolio.isNotEmpty) {
+      factors.add(const CreditFactor(name: 'Инвестиции', description: 'Диверсификация доходов', impact: CreditImpact.positive));
+    }
+    return CreditScore(score: _creditScore, factors: factors);
+  }
+
+  // Daily Quests
+  List<DailyQuest> _dailyQuests = [];
+  List<DailyQuest> get dailyQuests => _dailyQuests;
+  int get completedQuestsCount => _dailyQuests.where((q) => q.completed).length;
+
+  // Life Stages
+  List<LifeStage> _lifeStages = GameDataExtended.lifeStages();
+  List<LifeStage> get lifeStages => _lifeStages;
+
+  LifeStage get currentStage {
+    LifeStage current = _lifeStages.first;
+    for (var stage in _lifeStages) {
+      if (_user.level >= stage.requiredLevel) {
+        current = stage;
+      }
+    }
+    return current;
+  }
+
+  // Boss Challenges
+  List<BossChallenge> _bossChallenges = GameDataExtended.bossChallenges();
+  BossChallenge? get currentBossChallenge {
+    final idx = _bossChallenges.indexWhere((b) => b.month == _totalMonthsPlayed + 1);
+    if (idx != -1) return _bossChallenges[idx];
+    if (_bossChallenges.isNotEmpty) {
+      return _bossChallenges[_totalMonthsPlayed % _bossChallenges.length];
+    }
+    return null;
+  }
+
+  // Pending reward for UI to show
+  String? _pendingReward;
+  String? get pendingReward => _pendingReward;
+  void clearPendingReward() {
+    _pendingReward = null;
+    notifyListeners();
+  }
+
   // Financial health
   FinancialHealthScore get healthScore => FinancialHealthScore.calculate(
-        savingsRate: savingsTotal / _salary * 100,
+        savingsRate: _salary > 0 ? savingsTotal / _salary * 100 : 0,
         budgetAdherence: totalSpent > 0
             ? ((totalAllocated - totalSpent).abs() / totalAllocated * 100)
                 .clamp(0, 100)
@@ -119,6 +211,8 @@ class GameProvider extends ChangeNotifier {
       spent: _categories[index].spent + amount,
     );
     _balance -= amount;
+    _todaySpent += amount;
+    _todayExpenseCount++;
 
     _transactions.add(Transaction(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -128,6 +222,12 @@ class GameProvider extends ChangeNotifier {
       date: DateTime.now(),
       type: TransactionType.expense,
     ));
+
+    // Update quests
+    _updateQuestProgress(QuestType.addExpense, 1);
+    if (_todaySpent <= 500) {
+      _updateQuestProgress(QuestType.spendLimit, _todaySpent);
+    }
 
     _addExperience(10);
     notifyListeners();
@@ -144,6 +244,8 @@ class GameProvider extends ChangeNotifier {
       );
     }
 
+    _updateQuestProgress(QuestType.saveMoney, amount);
+    _creditScore = (_creditScore + 2).clamp(300, 850);
     _addExperience(25);
     _addPoints(50);
     notifyListeners();
@@ -162,8 +264,10 @@ class GameProvider extends ChangeNotifier {
 
     if (_goals[index].progress >= 1.0) {
       _unlockAchievement('goal_reached');
+      _pendingReward = '🎯 Цель "${_goals[index].name}" достигнута! +300 баллов';
     }
 
+    _creditScore = (_creditScore + 3).clamp(300, 850);
     _addExperience(30);
     _addPoints(25);
     notifyListeners();
@@ -177,26 +281,55 @@ class GameProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void advanceDay() {
+  // ===== Day Simulation =====
+
+  bool advanceDay() {
     if (_currentDay >= _totalDaysInMonth) {
-      _endMonth();
-      return;
+      return false; // Signal: month ended, show boss
     }
 
     _currentDay++;
     _streak++;
+    _todaySpent = 0;
+    _todayExpenseCount = 0;
+
+    // Advance stock prices
+    _stocks = _stocks.map((stock) {
+      final newHistory = InvestmentSimulator.advancePrice(stock);
+      return Stock(
+        id: stock.id,
+        name: stock.name,
+        ticker: stock.ticker,
+        icon: stock.icon,
+        priceHistory: newHistory,
+        volatility: stock.volatility,
+      );
+    }).toList();
+
+    // Generate new daily quests every day
+    _dailyQuests = GameDataExtended.generateDailyQuests(_currentDay + _currentMonth * 30);
+
+    // Auto-deduct daily mandatory expenses
+    double dailyMandatory = mandatoryTotal / _totalDaysInMonth;
+    _balance -= dailyMandatory;
+
     _addExperience(5);
 
-    // Random event chance (20% per day)
-    if (Random().nextDouble() < 0.20 && _availableEvents.isNotEmpty) {
-      // Event will be triggered by UI
-    }
+    // Check for streak achievements
+    if (_streak >= 7) _unlockAchievement('streak_7');
+    if (_streak >= 30) _unlockAchievement('streak_30');
+
+    // Update life stages
+    _updateLifeStages();
 
     notifyListeners();
+    return true; // Day advanced normally
   }
 
   LifeEvent? getRandomEvent() {
     if (_availableEvents.isEmpty) return null;
+    // 25% chance
+    if (Random().nextDouble() > 0.25) return null;
     final event = _availableEvents[Random().nextInt(_availableEvents.length)];
     return event;
   }
@@ -205,12 +338,77 @@ class GameProvider extends ChangeNotifier {
     _balance += amount;
     if (amount < 0) {
       _addExperience(20);
+      _creditScore = (_creditScore - 5).clamp(300, 850);
     } else {
       _addExperience(10);
+      _creditScore = (_creditScore + 3).clamp(300, 850);
     }
+    _unlockAchievement('crisis_manager');
     _addPoints(25);
     notifyListeners();
   }
+
+  // ===== Investment Actions =====
+
+  bool buyStock(String stockId, int shares) {
+    final stock = _stocks.firstWhere((s) => s.id == stockId, orElse: () => _stocks.first);
+    double cost = stock.currentPrice * shares;
+    if (cost > _balance) return false;
+
+    _balance -= cost;
+
+    final existingIdx = _portfolio.indexWhere((p) => p.stockId == stockId);
+    if (existingIdx != -1) {
+      final existing = _portfolio[existingIdx];
+      final totalShares = existing.shares + shares;
+      final avgPrice = (existing.avgBuyPrice * existing.shares + cost) / totalShares;
+      _portfolio[existingIdx] = existing.copyWith(shares: totalShares, avgBuyPrice: avgPrice);
+    } else {
+      _portfolio.add(StockPortfolio(
+        stockId: stockId,
+        shares: shares,
+        avgBuyPrice: stock.currentPrice,
+      ));
+    }
+
+    _updateQuestProgress(QuestType.investAction, 1);
+    _unlockAchievement('investor');
+    _creditScore = (_creditScore + 1).clamp(300, 850);
+    _addExperience(15);
+    _addPoints(10);
+    notifyListeners();
+    return true;
+  }
+
+  bool sellStock(String stockId, int shares) {
+    final portIdx = _portfolio.indexWhere((p) => p.stockId == stockId);
+    if (portIdx == -1) return false;
+
+    final holding = _portfolio[portIdx];
+    if (holding.shares < shares) return false;
+
+    final stock = _stocks.firstWhere((s) => s.id == stockId, orElse: () => _stocks.first);
+    double revenue = stock.currentPrice * shares;
+    _balance += revenue;
+
+    if (holding.shares == shares) {
+      _portfolio.removeAt(portIdx);
+    } else {
+      _portfolio[portIdx] = holding.copyWith(shares: holding.shares - shares);
+    }
+
+    double profit = (stock.currentPrice - holding.avgBuyPrice) * shares;
+    if (profit > 0) {
+      _addPoints((profit / 100).round().clamp(5, 200));
+      _pendingReward = '📈 Прибыль от продажи: +${profit.toStringAsFixed(0)} ₽!';
+    }
+
+    _addExperience(15);
+    notifyListeners();
+    return true;
+  }
+
+  // ===== Education =====
 
   void completeLesson(String lessonId) {
     final index = _lessons.indexWhere((l) => l.id == lessonId);
@@ -231,9 +429,13 @@ class GameProvider extends ChangeNotifier {
 
     _addPoints(lesson.rewardPoints);
     _addExperience(50);
+    _creditScore = (_creditScore + 5).clamp(300, 850);
+
+    _updateQuestProgress(QuestType.completeLesson, 1);
 
     if (completedLessonsCount >= _lessons.length) {
       _unlockAchievement('financial_guru');
+      _pendingReward = '🎓 Все уроки пройдены! +500 баллов!';
     }
 
     notifyListeners();
@@ -242,8 +444,11 @@ class GameProvider extends ChangeNotifier {
   void answerQuizCorrectly() {
     _addPoints(25);
     _addExperience(15);
+    _unlockAchievement('quiz_champion');
     notifyListeners();
   }
+
+  // ===== Shop =====
 
   bool purchaseMerch(String itemId) {
     final index = _merchItems.indexWhere((m) => m.id == itemId);
@@ -262,20 +467,133 @@ class GameProvider extends ChangeNotifier {
       purchased: true,
     );
 
+    _unlockAchievement('smart_shopper');
     _addExperience(20);
     notifyListeners();
     return true;
   }
 
+  // ===== Boss Challenge =====
+
+  void applyBossChoice(BossChoice choice) {
+    _balance += choice.moneyCost;
+    _addPoints(choice.pointsReward);
+    _creditScore = (_creditScore + choice.creditScoreImpact).clamp(300, 850);
+    _addExperience(75);
+    notifyListeners();
+  }
+
+  void endMonth() {
+    _currentDay = 1;
+    _currentMonth = (_currentMonth % 12) + 1;
+    _totalMonthsPlayed++;
+    _balance += _salary;
+    _todaySpent = 0;
+    _todayExpenseCount = 0;
+
+    // Reset spending
+    _categories = _categories.map((c) => c.copyWith(spent: 0)).toList();
+
+    // Level-based salary increases
+    _updateLifeStages();
+
+    _unlockAchievement('debt_free');
+    _addPoints(100);
+    _addExperience(100);
+    _creditScore = (_creditScore + 5).clamp(300, 850);
+
+    // Regenerate quests
+    _dailyQuests = GameDataExtended.generateDailyQuests(_currentDay + _currentMonth * 30);
+
+    notifyListeners();
+  }
+
+  // ===== Quest System =====
+
+  void _updateQuestProgress(QuestType type, double value) {
+    for (int i = 0; i < _dailyQuests.length; i++) {
+      final quest = _dailyQuests[i];
+      if (quest.type == type && !quest.completed) {
+        double newValue;
+        if (type == QuestType.spendLimit) {
+          // For spend limit, we track total spent — complete if under limit
+          newValue = value;
+          if (_todaySpent <= quest.targetValue) {
+            _dailyQuests[i] = quest.copyWith(currentValue: quest.targetValue, completed: true);
+            _addPoints(quest.rewardPoints);
+            _pendingReward = '✅ Квест "${quest.title}" выполнен! +${quest.rewardPoints} баллов';
+          }
+        } else {
+          newValue = quest.currentValue + value;
+          if (newValue >= quest.targetValue) {
+            _dailyQuests[i] = quest.copyWith(currentValue: newValue, completed: true);
+            _addPoints(quest.rewardPoints);
+            _pendingReward = '✅ Квест "${quest.title}" выполнен! +${quest.rewardPoints} баллов';
+          } else {
+            _dailyQuests[i] = quest.copyWith(currentValue: newValue);
+          }
+        }
+        break;
+      }
+    }
+  }
+
+  // ===== Life Stages =====
+
+  void _updateLifeStages() {
+    _lifeStages = _lifeStages.map((stage) {
+      if (_user.level >= stage.requiredLevel) {
+        return LifeStage(
+          id: stage.id,
+          title: stage.title,
+          description: stage.description,
+          icon: stage.icon,
+          requiredLevel: stage.requiredLevel,
+          unlocked: true,
+          perks: stage.perks,
+        );
+      }
+      return stage;
+    }).toList();
+
+    // Update salary based on stage
+    final stage = currentStage;
+    switch (stage.id) {
+      case 'junior':
+        _salary = 75000;
+        break;
+      case 'middle':
+        _salary = 100000;
+        break;
+      case 'senior':
+        _salary = 150000;
+        break;
+      case 'master':
+        _salary = 250000;
+        break;
+      default:
+        _salary = 60000;
+    }
+  }
+
+  // ===== Internal Helpers =====
+
   void _addExperience(int amount) {
     int newExp = _user.experience + amount;
     int level = _user.level;
     int expToNext = _user.experienceToNext;
+    bool leveledUp = false;
 
     while (newExp >= expToNext) {
       newExp -= expToNext;
       level++;
       expToNext = (expToNext * 1.2).round();
+      leveledUp = true;
+    }
+
+    if (leveledUp) {
+      _pendingReward = '🎉 Уровень $level! Новые возможности открыты!';
+      _updateLifeStages();
     }
 
     _user = _user.copyWith(
@@ -295,32 +613,13 @@ class GameProvider extends ChangeNotifier {
 
     _achievements[index] = _achievements[index].copyWith(unlocked: true);
     _addPoints(_achievements[index].points);
-  }
-
-  void unlockInitialAchievements() {
-    _unlockAchievement('first_budget');
-    _unlockAchievement('saver_beginner');
-    _unlockAchievement('streak_7');
-    notifyListeners();
-  }
-
-  void _endMonth() {
-    _currentDay = 1;
-    _currentMonth = (_currentMonth % 12) + 1;
-    _balance += _salary;
-
-    // Reset spending
-    _categories = _categories.map((c) => c.copyWith(spent: 0)).toList();
-
-    _unlockAchievement('debt_free');
-    _addPoints(100);
-    _addExperience(100);
-
-    notifyListeners();
+    _pendingReward = '🏆 Достижение: ${_achievements[index].title}! +${_achievements[index].points} баллов';
   }
 
   void initializeGame() {
-    unlockInitialAchievements();
+    _dailyQuests = GameDataExtended.generateDailyQuests(_currentDay + _currentMonth * 30);
+    _unlockAchievement('first_budget');
+    _updateLifeStages();
     notifyListeners();
   }
 }

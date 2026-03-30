@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cifra_game/theme/app_theme.dart';
 import 'package:cifra_game/providers/game_provider.dart';
-import 'package:cifra_game/screens/home/home_screen.dart';
+import 'package:cifra_game/screens/home/game_screen.dart';
 import 'package:cifra_game/screens/budget/budget_screen.dart';
 import 'package:cifra_game/screens/education/education_screen.dart';
+import 'package:cifra_game/screens/investments/investments_screen.dart';
 import 'package:cifra_game/screens/shop/shop_screen.dart';
-import 'package:cifra_game/screens/achievements/achievements_screen.dart';
+import 'package:cifra_game/screens/progress_map/progress_map_screen.dart';
+import 'package:cifra_game/screens/profile/profile_screen.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -19,11 +21,13 @@ class _MainShellState extends State<MainShell> {
   int _currentIndex = 0;
 
   final List<Widget> _screens = const [
-    HomeScreen(),
+    GameScreen(),
     BudgetScreen(),
+    InvestmentsScreen(),
     EducationScreen(),
     ShopScreen(),
-    AchievementsScreen(),
+    ProgressMapScreen(),
+    ProfileScreen(),
   ];
 
   @override
@@ -61,19 +65,21 @@ class _MainShellState extends State<MainShell> {
         child: SafeArea(
           child: SizedBox(
             height: 64,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildNavItem(0, Icons.home_outlined, Icons.home, 'Главная'),
-                _buildNavItem(
-                    1, Icons.pie_chart_outline, Icons.pie_chart, 'Бюджет'),
-                _buildNavItem(
-                    2, Icons.school_outlined, Icons.school, 'Обучение'),
-                _buildNavItem(3, Icons.shopping_bag_outlined,
-                    Icons.shopping_bag, 'Магазин'),
-                _buildNavItem(
-                    4, Icons.emoji_events_outlined, Icons.emoji_events, 'Награды'),
-              ],
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  const SizedBox(width: 4),
+                  _buildNavItem(0, Icons.videogame_asset_outlined, Icons.videogame_asset, 'Игра'),
+                  _buildNavItem(1, Icons.pie_chart_outline, Icons.pie_chart, 'Бюджет'),
+                  _buildNavItem(2, Icons.candlestick_chart_outlined, Icons.candlestick_chart, 'Биржа'),
+                  _buildNavItem(3, Icons.school_outlined, Icons.school, 'Уроки'),
+                  _buildNavItem(4, Icons.shopping_bag_outlined, Icons.shopping_bag, 'Магазин'),
+                  _buildNavItem(5, Icons.map_outlined, Icons.map, 'Карта'),
+                  _buildNavItem(6, Icons.person_outline, Icons.person, 'Профиль'),
+                  const SizedBox(width: 4),
+                ],
+              ),
             ),
           ),
         ),
@@ -89,13 +95,13 @@ class _MainShellState extends State<MainShell> {
       onTap: () => setState(() => _currentIndex = index),
       behavior: HitTestBehavior.opaque,
       child: SizedBox(
-        width: 64,
+        width: 58,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
                 color: isSelected
                     ? AppColors.primary.withOpacity(0.15)
@@ -105,14 +111,14 @@ class _MainShellState extends State<MainShell> {
               child: Icon(
                 isSelected ? activeIcon : icon,
                 color: isSelected ? AppColors.primary : AppColors.textMuted,
-                size: 24,
+                size: 22,
               ),
             ),
             const SizedBox(height: 2),
             Text(
               label,
               style: TextStyle(
-                fontSize: 10,
+                fontSize: 9,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                 color: isSelected ? AppColors.primary : AppColors.textMuted,
               ),
