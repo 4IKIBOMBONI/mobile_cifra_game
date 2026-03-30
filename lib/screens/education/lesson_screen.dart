@@ -241,6 +241,7 @@ class _LessonScreenState extends State<LessonScreen> {
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
                       onTap: _answered
                           ? null
                           : () {
@@ -300,9 +301,7 @@ class _LessonScreenState extends State<LessonScreen> {
                         ),
                       ),
                     ),
-                  ).animate().fadeIn(
-                      delay: Duration(milliseconds: 100 + index * 80),
-                      duration: 300.ms);
+                  );
                 }).toList(),
               ),
             ),

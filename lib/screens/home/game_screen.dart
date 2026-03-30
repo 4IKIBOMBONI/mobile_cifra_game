@@ -26,12 +26,16 @@ class _GameScreenState extends State<GameScreen> {
   String _rewardMessage = '';
 
   void _checkReward(GameProvider game) {
+    if (_showReward) return; // Don't stack rewards
     if (game.pendingReward != null) {
-      setState(() {
-        _rewardMessage = game.pendingReward!;
-        _showReward = true;
-      });
+      final msg = game.pendingReward!;
       game.clearPendingReward();
+      if (mounted) {
+        setState(() {
+          _rewardMessage = msg;
+          _showReward = true;
+        });
+      }
     }
   }
 
@@ -42,7 +46,9 @@ class _GameScreenState extends State<GameScreen> {
         final formatter = NumberFormat('#,###', 'ru_RU');
 
         // Check for pending rewards after frame
-        WidgetsBinding.instance.addPostFrameCallback((_) => _checkReward(game));
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _checkReward(game);
+        });
 
         return Stack(
           children: [
